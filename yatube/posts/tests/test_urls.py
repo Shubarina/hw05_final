@@ -53,7 +53,7 @@ class PostURLTests(TestCase):
             'posts/edit_post.html': reverse(
                 EDIT, kwargs={'post_id': self.post.id}
             ),
-            'core/404.html': '/unexisting_page/',
+            'core/404csrf.html': '/unexisting_page/',
         }
         for template, address in templates_url_names.items():
             with self.subTest(address=address):

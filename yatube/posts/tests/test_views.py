@@ -89,7 +89,7 @@ class PostViewTests(TestCase):
         }
         for page, amount in pages_amount.items():
             with self.subTest(page=page):
-                response = self.client.get(page)
+                response = self.authorized_client.get(page)
                 self.assertEqual(len(response.context['page_obj']), amount)
 
     def test_pages_uses_correct_template(self):
@@ -220,7 +220,7 @@ class PostViewTests(TestCase):
             text='Тестовый комментарий к посту').exists())
 
     def test_cache(self):
-        first_response = self.guest_client.get(reverse(INDEX))
+        first_response = self.authorized_client.get(reverse(INDEX))
         Post.objects.get(self.post.id).delete()
-        second_response = self.guest_client.get(reverse(INDEX))
+        second_response = self.authorized_client.get(reverse(INDEX))
         self.assertEqual(first_response.content, second_response.content)
