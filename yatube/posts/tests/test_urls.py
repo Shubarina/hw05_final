@@ -12,6 +12,7 @@ CREATE = 'posts:post_create'
 PROFILE = 'posts:profile'
 EDIT = 'posts:post_edit'
 COMMENT = 'posts:add_comment'
+FOLLOW = 'posts:follow_index'
 
 
 class PostURLTests(TestCase):
@@ -39,7 +40,7 @@ class PostURLTests(TestCase):
 
     def test_urls_uses_correct_template(self):
         templates_url_names = {
-            'posts/index.html': reverse(INDEX),
+            'posts/follow.html': reverse(FOLLOW),
             'posts/group_list.html': reverse(
                 GROUP, kwargs={'slug': self.group.slug}
             ),
@@ -53,7 +54,7 @@ class PostURLTests(TestCase):
             'posts/edit_post.html': reverse(
                 EDIT, kwargs={'post_id': self.post.id}
             ),
-            'core/404csrf.html': '/unexisting_page/',
+            'core/404.html': 'unexisting_page/',
         }
         for template, address in templates_url_names.items():
             with self.subTest(address=address):
@@ -107,3 +108,7 @@ class PostURLTests(TestCase):
         self.assertRedirects(
             response, f'/auth/login/?next=/posts/{self.post.id}/comment/'
         )
+
+    def test_index_template(self):
+        response = self.authorized_author.get(reverse(INDEX))
+        self.assertTemplateUsed(response, 'posts/index.html')

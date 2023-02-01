@@ -4,6 +4,7 @@ import tempfile
 from django import forms
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -69,6 +70,7 @@ class PostViewTests(TestCase):
         self.authorized_author.force_login(self.author)
 
     def test_pages_paginator_posts(self):
+        cache.clear()
         for post in range(12):
             Post.objects.create(
                 author=self.user,
@@ -93,6 +95,7 @@ class PostViewTests(TestCase):
                 self.assertEqual(len(response.context['page_obj']), amount)
 
     def test_pages_uses_correct_template(self):
+        cache.clear()
         templates_pages_names = {
             'posts/index.html': reverse(INDEX),
             'posts/group_list.html': reverse(GROUP, kwargs={
@@ -111,6 +114,7 @@ class PostViewTests(TestCase):
                 self.assertTemplateUsed(response, template)
 
     def test_home_context(self):
+        cache.clear()
         response = self.authorized_client.get(reverse(INDEX))
         first_object = response.context['page_obj'][0]
         post_author_0 = first_object.author
@@ -121,6 +125,7 @@ class PostViewTests(TestCase):
         self.assertEqual(post_image_0, '{}'.format(self.post.image.name))
 
     def test_group_list_context(self):
+        cache.clear()
         response = self.authorized_client.get(reverse(GROUP, kwargs={
             'slug': self.group.slug}))
         self.assertEqual(
@@ -131,6 +136,7 @@ class PostViewTests(TestCase):
         )
 
     def test_profile_context(self):
+        cache.clear()
         response = self.authorized_author.get(reverse(PROFILE, kwargs={
             'username': self.author.username}))
         self.assertEqual(
@@ -174,6 +180,7 @@ class PostViewTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_check(self):
+        cache.clear()
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый групповой пост',
@@ -221,6 +228,6 @@ class PostViewTests(TestCase):
 
     def test_cache(self):
         first_response = self.authorized_client.get(reverse(INDEX))
-        Post.objects.get(self.post.id).delete()
+        Post.objects.get(id=self.post.id).delete()
         second_response = self.authorized_client.get(reverse(INDEX))
         self.assertEqual(first_response.content, second_response.content)
