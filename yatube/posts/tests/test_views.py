@@ -283,6 +283,6 @@ class PostViewTests(TestCase):
         follow_count = Follow.objects.count()
         Follow.objects.create(user=self.follower, author=self.author)
         Follow.objects.create(user=self.follower, author=self.user)
-        self.assertEqual(Follow.objects.count(), follow_count+2)
+        self.assertEqual(Follow.objects.count(), follow_count + 2)
         Follow.objects.filter(author=self.author, user=self.follower).delete()
-        self.assertEqual(Follow.objects.count(), follow_count+1)
+        self.assertEqual(Follow.objects.count(), follow_count + 1)
