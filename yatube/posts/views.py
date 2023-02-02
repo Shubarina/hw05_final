@@ -6,10 +6,11 @@ from django.views.decorators.cache import cache_page
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post, User
 
+PAGI_PAGE = 10
+
 
 def pagination(queryset, request):
-    quantity = 10
-    paginator = Paginator(queryset, quantity)
+    paginator = Paginator(queryset, PAGI_PAGE)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     return page_obj
@@ -27,7 +28,7 @@ def index(request):
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
-    posts = group.posts.order_by('-pub_date').all()
+    posts = group.posts.all()
     page_obj = pagination(posts, request)
     context = {
         'group': group,
@@ -111,7 +112,7 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    post_list = Post.objects.filter(author__following__user=request.user).all()
+    post_list = Post.objects.filter(author__following__user=request.user)
     page_obj = pagination(post_list, request)
     context = {
         'page_obj': page_obj,

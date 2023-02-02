@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Comment, Group, Post, User
+from posts.models import Comment, Follow, Group, Post, User
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -19,6 +19,7 @@ CREATE = 'posts:post_create'
 PROFILE = 'posts:profile'
 EDIT = 'posts:post_edit'
 COMMENT = 'posts:add_comment'
+FOLLOW = 'posts:follow_index'
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -57,6 +58,7 @@ class PostViewTests(TestCase):
             description='Вторая тестовая группа'
         )
         cls.user = User.objects.create_user(username='NotAuthor')
+        cls.follower = User.objects.create_user(username='Anna')
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -68,6 +70,8 @@ class PostViewTests(TestCase):
         self.authorized_client.force_login(self.user)
         self.authorized_author = Client()
         self.authorized_author.force_login(self.author)
+        self.authorized_follower = Client()
+        self.authorized_follower.force_login(self.follower)
 
     def test_pages_paginator_posts(self):
         cache.clear()
@@ -231,3 +235,54 @@ class PostViewTests(TestCase):
         Post.objects.get(id=self.post.id).delete()
         second_response = self.authorized_client.get(reverse(INDEX))
         self.assertEqual(first_response.content, second_response.content)
+
+    def test_new_post(self):
+        # новая запись пользователя появляется в ленте тех,
+        # кто на него подписан b не появляетсz в ленте тех, кто не подписан
+        cache.clear()
+        form_data_1 = {
+            'text': 'Пост автора для фолловера',
+            'group': self.second_group.id,
+        }
+        response = self.authorized_author.post(
+            reverse(CREATE),
+            data=form_data_1,
+            follow=True,
+        )
+        form_data_2 = {
+            'text': 'Пост юзера для фолловера',
+            'group': self.second_group.id,
+        }
+        response = self.authorized_client.post(
+            reverse(CREATE),
+            data=form_data_2,
+            follow=True,
+        )
+        Follow.objects.create(user=self.follower, author=self.author)
+        Follow.objects.create(user=self.user, author=self.author)
+        Follow.objects.create(user=self.follower, author=self.user)
+        response = self.authorized_follower.get(reverse(FOLLOW))
+        self.assertEqual(
+            response.context['page_obj'][0].text, form_data_2['text']
+        )
+        response = self.authorized_follower.get(reverse(FOLLOW))
+        self.assertEqual(
+            response.context['page_obj'][1].text, form_data_1['text']
+        )
+        response = self.authorized_client.get(reverse(FOLLOW))
+        self.assertEqual(
+            response.context['page_obj'][0].text, form_data_1['text']
+        )
+        self.assertNotIn(
+            response.context['page_obj'][1].text, form_data_2['text']
+        )
+
+    def test_follow_unfollow(self):
+        # авторизованный пользователь может подписываться на других
+        # пользователей и удалять их из подписок
+        follow_count = Follow.objects.count()
+        Follow.objects.create(user=self.follower, author=self.author)
+        Follow.objects.create(user=self.follower, author=self.user)
+        self.assertEqual(Follow.objects.count(), follow_count+2)
+        Follow.objects.filter(author=self.author, user=self.follower).delete()
+        self.assertEqual(Follow.objects.count(), follow_count+1)
