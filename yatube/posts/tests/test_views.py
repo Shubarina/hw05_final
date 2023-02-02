@@ -66,6 +66,7 @@ class PostViewTests(TestCase):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
+        self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
         self.authorized_author = Client()
@@ -280,9 +281,30 @@ class PostViewTests(TestCase):
     def test_follow_unfollow(self):
         # авторизованный пользователь может подписываться на других
         # пользователей и удалять их из подписок
-        follow_count = Follow.objects.count()
-        Follow.objects.create(user=self.follower, author=self.author)
-        Follow.objects.create(user=self.follower, author=self.user)
-        self.assertEqual(Follow.objects.count(), follow_count + 2)
-        Follow.objects.filter(author=self.author, user=self.follower).delete()
-        self.assertEqual(Follow.objects.count(), follow_count + 1)
+        FOLLOW = 'posts:follow_index'
+        response = self.guest_client.get(reverse(FOLLOW))
+        self.assertRedirects(response, '/auth/login/?next=/follow/')
+        subscription = Follow.objects.filter(
+            user=self.follower, author=self.author).count()
+        self.assertEqual(subscription, 0)
+        response = self.authorized_follower.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.author.username}
+            )
+        )
+        self.assertTrue(
+            Follow.objects.filter(
+                user=self.follower, author=self.author).exists()
+        )
+        response = self.authorized_follower.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': self.author.username}
+            )
+        )
+        self.assertFalse(
+            Follow.objects.filter(
+                user=self.follower,
+                author=self.author).exists()
+        )
