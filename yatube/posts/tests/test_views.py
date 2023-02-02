@@ -299,7 +299,8 @@ class PostViewTests(TestCase):
 
     def test_profile_unfollow(self):
         Follow.objects.create(user=self.follower, author=self.author)
-        self.assertTrue(Follow.objects.filter(
+        self.assertTrue(
+            Follow.objects.filter(
                 user=self.follower, author=self.author).exists()
         )
         response = self.authorized_follower.get(
