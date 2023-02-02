@@ -1,6 +1,8 @@
 import shutil
 import tempfile
 
+from http import HTTPStatus
+
 from django import forms
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -278,10 +280,7 @@ class PostViewTests(TestCase):
             response.context['page_obj'][1].text, form_data_2['text']
         )
 
-    def test_follow_unfollow(self):
-        # авторизованный пользователь может подписываться на других
-        # пользователей и удалять их из подписок
-        FOLLOW = 'posts:follow_index'
+    def test_profile_follow(self):
         response = self.guest_client.get(reverse(FOLLOW))
         self.assertRedirects(response, '/auth/login/?next=/follow/')
         subscription = Follow.objects.filter(
@@ -297,12 +296,19 @@ class PostViewTests(TestCase):
             Follow.objects.filter(
                 user=self.follower, author=self.author).exists()
         )
+
+    def test_profile_unfollow(self):
+        Follow.objects.create(user=self.follower, author=self.author)
+        self.assertTrue(Follow.objects.filter(
+                user=self.follower, author=self.author).exists()
+        )
         response = self.authorized_follower.get(
             reverse(
                 'posts:profile_unfollow',
                 kwargs={'username': self.author.username}
             )
         )
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertFalse(
             Follow.objects.filter(
                 user=self.follower,
